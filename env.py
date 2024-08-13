@@ -18,7 +18,6 @@ import re
 # import plotly.express as px
 import requests
 from docx2pdf import convert
-import pythoncom
 from io import BytesIO
 from dotenv import load_dotenv
 import time
@@ -29,7 +28,8 @@ import time
 load_dotenv()
 
 # Set your OpenAI API key from environment variable
-openai.api_key = os.getenv('OPENAI_API_KEY')
+# openai.api_key = os.getenv('OPENAI_API_KEY')
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Set your Telegram bot token and chat ID
 telegram_bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
@@ -277,22 +277,42 @@ def save_report_as_word(report, filename):
     except Exception as e:
         st.error(f"Failed to save Word report: {e}")
 
+# def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
+#     try:
+#         pythoncom.CoInitialize()
+#         for attempt in range(retries):
+#             try:
+#                 convert(word_filename, pdf_filename)
+#                 return
+#             except Exception as e:
+#                 st.error(f"Attempt {attempt + 1} failed: {e}")
+#                 if attempt < retries - 1:
+#                     time.sleep(delay)
+#                 else:
+#                     st.error("Failed to convert Word to PDF after multiple attempts.")
+#     finally:
+#         pythoncom.CoUninitialize()
 def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
-    try:
-        pythoncom.CoInitialize()
-        for attempt in range(retries):
-            try:
-                convert(word_filename, pdf_filename)
-                return
-            except Exception as e:
-                st.error(f"Attempt {attempt + 1} failed: {e}")
-                if attempt < retries - 1:
-                    time.sleep(delay)
-                else:
-                    st.error("Failed to convert Word to PDF after multiple attempts.")
-    finally:
-        pythoncom.CoUninitialize()
+    for attempt in range(retries):
+        try:
+            convert(word_filename, pdf_filename)
+            st.success("Conversion successful!")
+            return
+        except Exception as e:
+            st.error(f"Attempt {attempt + 1} failed: {e}")
+            if attempt < retries - 1:
+                time.sleep(delay)
+            else:
+                st.error("Failed to convert Word to PDF after multiple attempts.")
 
+# def create_zip_file(word_filename, pdf_filename, zip_filename):
+#     try:
+#         with zipfile.ZipFile(zip_filename, 'w') as zipf:
+#             zipf.write(word_filename)
+#             zipf.write(pdf_filename)
+#         st.success(f"Zip file {zip_filename} created successfully.")
+#     except Exception as e:
+#         st.error(f"Failed to create zip file: {e}")
 def create_zip_file(word_filename, pdf_filename, zip_filename):
     try:
         with zipfile.ZipFile(zip_filename, 'w') as zipf:
