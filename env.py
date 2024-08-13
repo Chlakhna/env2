@@ -15,25 +15,22 @@ from email import encoders
 import openai
 from datetime import datetime
 import re
-# import plotly.express as px
 import requests
-from docx2pdf import convert
 from io import BytesIO
 from dotenv import load_dotenv
 import time
-
-# Your existing code
+import convertapi  # Add this import for ConvertAPI
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Set your OpenAI API key from environment variable
-# openai.api_key = os.getenv('OPENAI_API_KEY')
+# Set your API keys
 openai.api_key = st.secrets["OPENAI_API_KEY"]
+convertapi.api_secret = st.secrets["CONVERTAPI_SECRET"]  # Add your ConvertAPI secret here
 
 # Set your Telegram bot token and chat ID
 telegram_bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
-telegram_chat_id = '-1002164741954'  # This can stay hardcoded or also be moved to an environment variable if needed
+telegram_chat_id = '-1002164741954'
 
 # Email configuration
 from_email = "seaklav168@gmail.com"
@@ -77,16 +74,13 @@ def generate_report_with_chatgpt(data, report_title):
         )
 
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",  # Or "gpt-3.5-turbo"
+            model="gpt-4",
             messages=[{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": prompt}],
             max_tokens=8000,
             temperature=0.7
         )
 
         report_parts = response.choices[0].message['content'].strip()
-
-        # Store report parts in session state to avoid re-running
-        # st.session_state["report_parts"] = report_parts
 
         st.write(report_parts)
 
@@ -277,25 +271,15 @@ def save_report_as_word(report, filename):
     except Exception as e:
         st.error(f"Failed to save Word report: {e}")
 
-# def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
-#     try:
-#         pythoncom.CoInitialize()
-#         for attempt in range(retries):
-#             try:
-#                 convert(word_filename, pdf_filename)
-#                 return
-#             except Exception as e:
-#                 st.error(f"Attempt {attempt + 1} failed: {e}")
-#                 if attempt < retries - 1:
-#                     time.sleep(delay)
-#                 else:
-#                     st.error("Failed to convert Word to PDF after multiple attempts.")
-#     finally:
-#         pythoncom.CoUninitialize()
 def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
     for attempt in range(retries):
         try:
-            convert(word_filename, pdf_filename)
+            result = convertapi.convert('pdf', {
+                'File': word_filename
+            }, from_format='docx')
+
+            # Save the PDF file
+            result.file.save(pdf_filename)
             st.success("Conversion successful!")
             return
         except Exception as e:
@@ -305,14 +289,6 @@ def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
             else:
                 st.error("Failed to convert Word to PDF after multiple attempts.")
 
-# def create_zip_file(word_filename, pdf_filename, zip_filename):
-#     try:
-#         with zipfile.ZipFile(zip_filename, 'w') as zipf:
-#             zipf.write(word_filename)
-#             zipf.write(pdf_filename)
-#         st.success(f"Zip file {zip_filename} created successfully.")
-#     except Exception as e:
-#         st.error(f"Failed to create zip file: {e}")
 def create_zip_file(word_filename, pdf_filename, zip_filename):
     try:
         with zipfile.ZipFile(zip_filename, 'w') as zipf:
@@ -368,23 +344,6 @@ def fetch_pivot_data(pivot_table_url):
         st.error(f"Failed to fetch pivot table data from Google Sheets: {e}")
         return None
     return pivot_df
-
-def ask_about_data(data, question):
-    try:
-        prompt = f"Given the following data:\n{data.to_csv(index=False)}\nAnswer the following question: {question}"
-
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[{"role": "system", "content": "You are a data analyst."}, {"role": "user", "content": prompt}],
-            max_tokens=500,
-            temperature=0.5
-        )
-
-        answer = response.choices[0].message['content'].strip()
-        return answer
-    except Exception as e:
-        st.error(f"Failed to get a response: {e}")
-        return None
 
 def dashboard():
     st.set_page_config(
@@ -471,42 +430,6 @@ def dashboard():
         )
         df_style = df.style.set_properties(**{'background-color': 'rgb(161, 219, 255, 0.3)', 'color': 'white'})
         st.dataframe(df_style)
-
-        st.markdown(
-            """
-            <div style="display: flex; align-items: center;">
-                <label for="question_input" style="font-family: 'Khmer OS Muol Light', Arial, sans-serif; font-size: 14px;">សូមបញ្ចូលសំណួរ:</label>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            # Text input field
-            question = st.text_input(" ", key="question_input_key")
-
-        with col2:
-            st.markdown("""
-                <style>
-                div.stButton > button {
-                    width: auto;
-                    height: 40px;
-                    margin-top: 11px;
-                }
-                div.stButton > button:hover {
-                    background-color: darkgreen;
-                }
-                </style>
-                """, unsafe_allow_html=True)
-            search = st.button("Search")
-
-        # Display the answer if the button is clicked
-        if search and question:
-            st.session_state["search_result"] = ask_about_data(df, question)
-
-        if "search_result" in st.session_state:
-            st.write(st.session_state["search_result"])
 
          # Add button to generate report with custom style
         button_style = """
