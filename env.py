@@ -21,12 +21,16 @@ from docx2pdf import convert
 from io import BytesIO
 from dotenv import load_dotenv
 import time
+import convertapi
+
 
 # Your existing code
 
 # Load environment variables from .env file
 load_dotenv()
 
+# Set your ConvertAPI secret key
+convertapi.api_secret = st.secrets["CONVERTAPI_SECRET"]
 # Set your OpenAI API key from environment variable
 # openai.api_key = os.getenv('OPENAI_API_KEY')
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -292,10 +296,32 @@ def save_report_as_word(report, filename):
 #                     st.error("Failed to convert Word to PDF after multiple attempts.")
 #     finally:
 #         pythoncom.CoUninitialize()
+# def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
+#     for attempt in range(retries):
+#         try:
+#             convert(word_filename, pdf_filename)
+#             st.success("Conversion successful!")
+#             return
+#         except Exception as e:
+#             st.error(f"Attempt {attempt + 1} failed: {e}")
+#             if attempt < retries - 1:
+#                 time.sleep(delay)
+#             else:
+#                 st.error("Failed to convert Word to PDF after multiple attempts.")
+
+
+
 def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
     for attempt in range(retries):
         try:
-            convert(word_filename, pdf_filename)
+            # Use convertapi to convert the Word document to PDF
+            result = convertapi.convert('pdf', {
+                'File': word_filename
+            }, from_format='docx')
+
+            # Save the PDF to the desired location
+            result.file.save(pdf_filename)
+
             st.success("Conversion successful!")
             return
         except Exception as e:
@@ -304,6 +330,8 @@ def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
                 time.sleep(delay)
             else:
                 st.error("Failed to convert Word to PDF after multiple attempts.")
+
+
 
 # def create_zip_file(word_filename, pdf_filename, zip_filename):
 #     try:
