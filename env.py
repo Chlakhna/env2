@@ -915,10 +915,13 @@ def create_pdf_with_structure(pdf_filename, content):
                                 rightMargin=56.7, leftMargin=56.7,
                                 topMargin=56.7, bottomMargin=56.7)
         styles = getSampleStyleSheet()
-        styles.add(ParagraphStyle(name='Justify', alignment=4, fontName="Helvetica"))
-        styles.add(ParagraphStyle(name='Heading1', alignment=1, fontSize=18, spaceAfter=20, leading=22))
-        styles.add(ParagraphStyle(name='Heading2', alignment=1, fontSize=16, spaceAfter=18, leading=20))
-        styles.add(ParagraphStyle(name='Normal', fontName="Helvetica", fontSize=12, spaceAfter=12, leading=14))
+
+        # Use existing styles or create new custom styles
+        heading1_style = styles['Heading1']
+        heading2_style = styles['Heading2']
+        heading3_style = styles['Heading3']
+        body_text_style = styles['BodyText']
+        justified_style = ParagraphStyle(name="Justified", parent=styles['BodyText'], alignment=4)
 
         elements = []
 
@@ -932,31 +935,31 @@ def create_pdf_with_structure(pdf_filename, content):
             elements.append(img)
 
         elements.append(Spacer(1, 12))
-        elements.append(Paragraph("<b>DCx Co., Ltd.</b>", styles['Heading1']))
+        elements.append(Paragraph("<b>DCx Co., Ltd.</b>", heading1_style))
         elements.append(Spacer(1, 24))
-        elements.append(Paragraph("<b>Report</b>", styles['Heading2']))
+        elements.append(Paragraph("<b>Report</b>", heading1_style))
         elements.append(Spacer(1, 12))
-        elements.append(Paragraph("Indigenous Agriculture Adaptation", styles['Heading1']))
+        elements.append(Paragraph("Indigenous Agriculture Adaptation", heading1_style))
         elements.append(Spacer(1, 48))
-        elements.append(Paragraph("Prepared for: Jack Jasmin", styles['Normal']))
-        elements.append(Paragraph("Prepared by: Black Eye Team", styles['Normal']))
+        elements.append(Paragraph("Prepared for: Jack Jasmin", body_text_style))
+        elements.append(Paragraph("Prepared by: Black Eye Team", body_text_style))
         elements.append(Spacer(1, 12))
-        elements.append(Paragraph(f"Date: {datetime.now().strftime('%B %d, %Y')}", styles['Normal']))
+        elements.append(Paragraph(f"Date: {datetime.now().strftime('%B %d, %Y')}", body_text_style))
         elements.append(PageBreak())
 
         # Process content into structured paragraphs
         lines = content.split("\n")
         for line in lines:
             if line.strip().startswith("# "):
-                elements.append(Paragraph(line.strip()[2:], styles['Heading1']))
+                elements.append(Paragraph(line.strip()[2:], heading1_style))
             elif line.strip().startswith("## "):
-                elements.append(Paragraph(line.strip()[3:], styles['Heading2']))
+                elements.append(Paragraph(line.strip()[3:], heading2_style))
             elif line.strip().startswith("### "):
-                elements.append(Paragraph(line.strip()[4:], styles['Heading3']))
+                elements.append(Paragraph(line.strip()[4:], heading3_style))
             elif line.strip().startswith("* "):
-                elements.append(Paragraph(f"• {line.strip()[2:]}", styles['Normal']))
+                elements.append(Paragraph(f"• {line.strip()[2:]}", body_text_style))
             else:
-                elements.append(Paragraph(line.strip(), styles['Justify']))
+                elements.append(Paragraph(line.strip(), justified_style))
             elements.append(Spacer(1, 12))
 
         doc.build(elements)
@@ -966,17 +969,6 @@ def create_pdf_with_structure(pdf_filename, content):
     except Exception as e:
         st.error(f"Failed to create PDF: {e}")
         raise RuntimeError(f"Failed to create PDF: {e}")
-
-def create_zip_file(word_filename, pdf_filename, zip_filename):
-    try:
-        with zipfile.ZipFile(zip_filename, 'w') as zipf:
-            if os.path.exists(word_filename):
-                zipf.write(word_filename)
-            if os.path.exists(pdf_filename):
-                zipf.write(pdf_filename)
-        st.success(f"Zip file {zip_filename} created successfully.")
-    except Exception as e:
-        st.error(f"Failed to create zip file: {e}")
 
 def send_email_with_attachments(subject, body, attachments):
     to_email = ["hratana261@gmail.com", "khengdalish21@gmail.com", "chlakhna702@gmail.com"]
