@@ -330,7 +330,8 @@ def create_pdf_from_text(pdf_filename, content):
     pdf.add_page()
     pdf.set_font("Arial", size=12)
     for line in content.split("\n"):
-        pdf.multi_cell(0, 10, line)
+        if len(line.strip()) > 0:
+            pdf.multi_cell(0, 10, line)
     pdf.output(pdf_filename)
 
 # Function to convert DOCX to PDF with retry logic
@@ -339,24 +340,31 @@ def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
         try:
             content = read_docx_content(word_filename)
             create_pdf_from_text(pdf_filename, content)
-            st.success("Conversion successful!")
-            return
+            if os.path.exists(pdf_filename):
+                st.success("Conversion successful!")
+                return True
+            else:
+                raise FileNotFoundError(f"Failed to create {pdf_filename}")
         except Exception as e:
             st.error(f"Attempt {attempt + 1} failed: {e}")
             if attempt < retries - 1:
                 time.sleep(delay)
             else:
                 st.error("Failed to convert Word to PDF after multiple attempts.")
+                return False
 
 # Function to create a ZIP file containing both the DOCX and PDF files
 def create_zip_file(word_filename, pdf_filename, zip_filename):
     try:
         with zipfile.ZipFile(zip_filename, 'w') as zipf:
-            zipf.write(word_filename)
-            zipf.write(pdf_filename)
+            if os.path.exists(word_filename):
+                zipf.write(word_filename)
+            if os.path.exists(pdf_filename):
+                zipf.write(pdf_filename)
         st.success(f"Zip file {zip_filename} created successfully.")
     except Exception as e:
         st.error(f"Failed to create zip file: {e}")
+
 
 def send_email_with_attachments(subject, body, attachments):
     to_email = ["hratana261@gmail.com", "khengdalish21@gmail.com", "chlakhna702@gmail.com"]
