@@ -930,55 +930,7 @@ def read_docx_content(word_filename):
 #             raise FileNotFoundError(f"{pdf_filename} not created.")
 #     except Exception as e:
 #         raise RuntimeError(f"Failed to create PDF: {e}")
-def clean_content(content):
-    # Remove or replace problematic characters
-    cleaned_content = []
-    for line in content.split('\n'):
-        cleaned_line = ''.join(ch for ch in line if ch.isprintable())
-        cleaned_content.append(cleaned_line)
-    return '\n'.join(cleaned_content)
-def create_pdf_from_text(pdf_filename, content):
-    try:
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=10)  # Reduced font size
 
-        max_line_width = pdf.w - 2 * pdf.l_margin  # Page width minus margins
-
-        content = clean_content(content)  # Clean the content to remove hidden characters
-
-        for line in content.split("\n"):
-            if len(line.strip()) > 0:
-                words = line.split(' ')
-                current_line = ""
-                for word in words:
-                    word_width = pdf.get_string_width(word)
-                    st.write(f"Processing word: '{word}', Width: {word_width}, Max Width: {max_line_width}")
-                    
-                    if word_width > max_line_width:
-                        st.warning(f"Word '{word}' is too long to fit in the line. Truncating...")
-                        word = word[:int(max_line_width)] + '...'  # Example truncation
-                        
-                    if pdf.get_string_width(current_line + word + " ") > max_line_width:
-                        st.write(f"Line before adding word: '{current_line}', Line width: {pdf.get_string_width(current_line)}")
-                        pdf.multi_cell(0, 10, current_line)
-                        current_line = word + " "
-                    else:
-                        current_line += word + " "
-
-                if current_line:
-                    pdf.multi_cell(0, 10, current_line)
-            else:
-                st.write("Processing empty line")
-                pdf.multi_cell(0, 10, '')
-
-        pdf.output(pdf_filename)
-
-        if not os.path.exists(pdf_filename):
-            raise FileNotFoundError(f"{pdf_filename} not created.")
-    except Exception as e:
-        st.error(f"Failed to create PDF: {e}")
-        raise RuntimeError(f"Failed to create PDF: {e}")
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
