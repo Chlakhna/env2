@@ -653,7 +653,7 @@ import time
 from fpdf import FPDF
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-
+import json  # Add this line to import the json module
 # Load environment variables from .env file
 load_dotenv()
 
