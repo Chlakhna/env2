@@ -905,9 +905,19 @@ def create_pdf_from_text(pdf_filename, content):
                 words = line.split(' ')
                 current_line = ""
                 for word in words:
+                    # Check if adding the next word would exceed the line width
                     if pdf.get_string_width(current_line + word + " ") > max_line_width:
-                        pdf.multi_cell(0, 10, current_line)
-                        current_line = word + " "
+                        if pdf.get_string_width(word) > max_line_width:
+                            # Break long words if they can't fit within the line
+                            for char in word:
+                                if pdf.get_string_width(current_line + char) > max_line_width:
+                                    pdf.multi_cell(0, 10, current_line)
+                                    current_line = char
+                                else:
+                                    current_line += char
+                        else:
+                            pdf.multi_cell(0, 10, current_line)
+                            current_line = word + " "
                     else:
                         current_line += word + " "
                 if current_line:
@@ -918,6 +928,8 @@ def create_pdf_from_text(pdf_filename, content):
         pdf.output(pdf_filename)
     except Exception as e:
         raise RuntimeError(f"Failed to create PDF: {e}")
+
+               
 
 # Function to convert DOCX to PDF with retry logic
 def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
