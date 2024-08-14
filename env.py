@@ -932,7 +932,7 @@ def create_pdf_from_text(pdf_filename, content):
     try:
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Arial", size=12)
+        pdf.set_font("Arial", size=12)  # Consider reducing this size if necessary
 
         max_line_width = pdf.w - 2 * pdf.l_margin  # Page width minus margins
 
@@ -941,10 +941,16 @@ def create_pdf_from_text(pdf_filename, content):
                 words = line.split(' ')
                 current_line = ""
                 for word in words:
-                    # Debugging: Log the word that's causing the issue
-                    if pdf.get_string_width(word) > max_line_width:
-                        st.warning(f"Long word detected: {word}")
-                        word = word[:max_line_width] + '...'  # Truncate long words
+                    # Log the word and its width to identify the issue
+                    word_width = pdf.get_string_width(word)
+                    st.write(f"Processing word: {word}, Width: {word_width}, Max Width: {max_line_width}")
+                    
+                    if word_width > max_line_width:
+                        # If even a single word is too wide, log it and truncate or split it
+                        st.warning(f"Word '{word}' is too long to fit in the line.")
+                        # Consider splitting or truncating the word
+                        word = word[:int(max_line_width)] + '...'  # Example truncation, you may split it instead
+
                     if pdf.get_string_width(current_line + word + " ") > max_line_width:
                         pdf.multi_cell(0, 10, current_line)
                         current_line = word + " "
@@ -961,6 +967,7 @@ def create_pdf_from_text(pdf_filename, content):
             raise FileNotFoundError(f"{pdf_filename} not created.")
     except Exception as e:
         raise RuntimeError(f"Failed to create PDF: {e}")
+
 
 def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
     for attempt in range(retries):
