@@ -890,25 +890,60 @@ def read_docx_content(word_filename):
     return content
 
 # Function to create PDF using fpdf2
+# def create_pdf_from_text(pdf_filename, content):
+#     try:
+#         pdf = FPDF()
+#         pdf.add_page()
+#         pdf.set_font("Arial", size=12)
+
+#         # Handle long lines by splitting them if they exceed the page width
+#         max_line_width = pdf.w - 2 * pdf.l_margin  # Page width minus margins
+
+#         for line in content.split("\n"):
+#             if len(line.strip()) > 0:
+#                 # Split the line into words
+#                 words = line.split(' ')
+#                 current_line = ""
+#                 for word in words:
+#                     # Check if adding the next word would exceed the line width
+#                     if pdf.get_string_width(current_line + word + " ") > max_line_width:
+#                         if pdf.get_string_width(word) > max_line_width:
+#                             # Break long words if they can't fit within the line
+#                             for char in word:
+#                                 if pdf.get_string_width(current_line + char) > max_line_width:
+#                                     pdf.multi_cell(0, 10, current_line)
+#                                     current_line = char
+#                                 else:
+#                                     current_line += char
+#                         else:
+#                             pdf.multi_cell(0, 10, current_line)
+#                             current_line = word + " "
+#                     else:
+#                         current_line += word + " "
+#                 if current_line:
+#                     pdf.multi_cell(0, 10, current_line)
+#             else:
+#                 pdf.multi_cell(0, 10, '')
+
+#         pdf.output(pdf_filename)
+#     except Exception as e:
+#         raise RuntimeError(f"Failed to create PDF: {e}")
 def create_pdf_from_text(pdf_filename, content):
     try:
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=12)
 
-        # Handle long lines by splitting them if they exceed the page width
         max_line_width = pdf.w - 2 * pdf.l_margin  # Page width minus margins
 
         for line in content.split("\n"):
             if len(line.strip()) > 0:
-                # Split the line into words
                 words = line.split(' ')
                 current_line = ""
                 for word in words:
-                    # Check if adding the next word would exceed the line width
                     if pdf.get_string_width(current_line + word + " ") > max_line_width:
                         if pdf.get_string_width(word) > max_line_width:
-                            # Break long words if they can't fit within the line
+                            # Break long words that can't fit within the line
                             for char in word:
                                 if pdf.get_string_width(current_line + char) > max_line_width:
                                     pdf.multi_cell(0, 10, current_line)
@@ -926,6 +961,8 @@ def create_pdf_from_text(pdf_filename, content):
                 pdf.multi_cell(0, 10, '')
 
         pdf.output(pdf_filename)
+        if not os.path.exists(pdf_filename):
+            raise FileNotFoundError(f"{pdf_filename} not created.")
     except Exception as e:
         raise RuntimeError(f"Failed to create PDF: {e}")
 
