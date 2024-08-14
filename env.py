@@ -29,8 +29,6 @@ from fpdf import FPDF
 # Load environment variables from .env file
 load_dotenv()
 
-# Set your ConvertAPI secret key
-convertapi.api_secret = st.secrets["CONVERTAPI_SECRET"]
 # Set your OpenAI API key from environment variable
 # openai.api_key = os.getenv('OPENAI_API_KEY')
 openai.api_key = st.secrets["OPENAI_API_KEY"]
