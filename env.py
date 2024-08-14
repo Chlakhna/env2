@@ -632,7 +632,6 @@
 
 import streamlit as st
 import pandas as pd
-import json
 import os
 import zipfile
 from docx import Document
@@ -652,6 +651,8 @@ from io import BytesIO
 from dotenv import load_dotenv
 import time
 from fpdf import FPDF
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 # Load environment variables from .env file
 load_dotenv()
@@ -678,11 +679,8 @@ def send_to_telegram(file_path, caption):
 
 def generate_report_with_chatgpt(data, report_title):
     try:
-        prompt = (
-            f"Please give a formal report based on provided data and contents as below:  "
-            f"{json.dumps(data, indent=2)}"
-        )
-
+        prompt = f"Please generate a formal report based on the following data: {json.dumps(data, indent=2)}"
+        
         response = openai.ChatCompletion.create(
             model="gpt-4o-mini",
             messages=[{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": prompt}],
@@ -694,7 +692,7 @@ def generate_report_with_chatgpt(data, report_title):
 
         st.write(report_parts)
 
-        # Save report as Word and PDF documents with the dynamic title
+        # Save report as Word and PDF documents
         word_filename = f'{report_title}.docx'
         pdf_filename = f'{report_title}.pdf'
         save_report_as_word(report_parts, word_filename)
@@ -744,7 +742,6 @@ def create_cover_page(doc, report_title):
     run.bold = True
     cover.add_run("\n").font.size = Pt(24)
 
-    # Add some spacing
     doc.add_paragraph("\n")
     cover = doc.add_paragraph()
     cover.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -881,58 +878,12 @@ def save_report_as_word(report, filename):
     except Exception as e:
         st.error(f"Failed to save Word report: {e}")
 
-# Function to read content from DOCX
 def read_docx_content(word_filename):
     doc = Document(word_filename)
     content = ""
     for para in doc.paragraphs:
         content += para.text + "\n"
     return content
-
-# Function to create PDF using fpdf2
-
-def create_pdf_from_text(pdf_filename, content):
-    try:
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)  # Consider reducing this size if necessary
-
-        max_line_width = pdf.w - 2 * pdf.l_margin  # Page width minus margins
-
-        for line in content.split("\n"):
-            if len(line.strip()) > 0:
-                words = line.split(' ')
-                current_line = ""
-                for word in words:
-                    # Log the word and its width to identify the issue
-                    word_width = pdf.get_string_width(word)
-                    st.write(f"Processing word: {word}, Width: {word_width}, Max Width: {max_line_width}")
-                    
-                    if word_width > max_line_width:
-                        # If even a single word is too wide, log it and truncate or split it
-                        st.warning(f"Word '{word}' is too long to fit in the line.")
-                        # Consider splitting or truncating the word
-                        word = word[:int(max_line_width)] + '...'  # Example truncation, you may split it instead
-
-                    if pdf.get_string_width(current_line + word + " ") > max_line_width:
-                        pdf.multi_cell(0, 10, current_line)
-                        current_line = word + " "
-                    else:
-                        current_line += word + " "
-                if current_line:
-                    pdf.multi_cell(0, 10, current_line)
-            else:
-                pdf.multi_cell(0, 10, '')
-
-        pdf.output(pdf_filename)
-
-        if not os.path.exists(pdf_filename):
-            raise FileNotFoundError(f"{pdf_filename} not created.")
-    except Exception as e:
-        raise RuntimeError(f"Failed to create PDF: {e}")
-
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
 
 def create_pdf_reportlab(pdf_filename, content):
     try:
@@ -942,6 +893,10 @@ def create_pdf_reportlab(pdf_filename, content):
 
         y = height - 40
         for line in content.split('\n'):
+            if y < 40:  # If we're at the bottom of the page, add a new page
+                c.showPage()
+                y = height - 40
+                c.setFont("Helvetica", 10)
             c.drawString(40, y, line)
             y -= 12  # Move to the next line, adjust line spacing as needed
 
@@ -953,13 +908,11 @@ def create_pdf_reportlab(pdf_filename, content):
         st.error(f"Failed to create PDF: {e}")
         raise RuntimeError(f"Failed to create PDF: {e}")
 
-
-
 def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
     for attempt in range(retries):
         try:
             content = read_docx_content(word_filename)
-            create_pdf_from_text(pdf_filename, content)
+            create_pdf_reportlab(pdf_filename, content)
             if os.path.exists(pdf_filename):
                 st.success("Conversion successful!")
                 return True
@@ -973,29 +926,6 @@ def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
                 st.error("Failed to convert Word to PDF after multiple attempts.")
                 return False
 
-
-               
-
-# # Function to convert DOCX to PDF with retry logic
-# def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
-#     for attempt in range(retries):
-#         try:
-#             content = read_docx_content(word_filename)
-#             create_pdf_from_text(pdf_filename, content)
-#             if os.path.exists(pdf_filename):
-#                 st.success("Conversion successful!")
-#                 return True
-#             else:
-#                 raise FileNotFoundError(f"Failed to create {pdf_filename}")
-#         except Exception as e:
-#             st.error(f"Attempt {attempt + 1} failed: {e}")
-#             if attempt < retries - 1:
-#                 time.sleep(delay)
-#             else:
-#                 st.error("Failed to convert Word to PDF after multiple attempts.")
-#                 return False
-
-# Function to create a ZIP file containing both the DOCX and PDF files
 def create_zip_file(word_filename, pdf_filename, zip_filename):
     try:
         with zipfile.ZipFile(zip_filename, 'w') as zipf:
@@ -1006,7 +936,6 @@ def create_zip_file(word_filename, pdf_filename, zip_filename):
         st.success(f"Zip file {zip_filename} created successfully.")
     except Exception as e:
         st.error(f"Failed to create zip file: {e}")
-
 
 def send_email_with_attachments(subject, body, attachments):
     to_email = ["hratana261@gmail.com", "khengdalish21@gmail.com", "chlakhna702@gmail.com"]
