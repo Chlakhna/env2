@@ -639,6 +639,8 @@ from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.section import WD_SECTION
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -653,11 +655,11 @@ from dotenv import load_dotenv
 import time
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
 from reportlab.lib.units import inch
-from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
 
 # Load environment variables from .env file
 load_dotenv()
@@ -910,11 +912,37 @@ def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
 
 def create_pdf_with_structure(pdf_filename, content):
     try:
-        doc = SimpleDocTemplate(pdf_filename, pagesize=letter)
+        doc = SimpleDocTemplate(pdf_filename, pagesize=A4,
+                                rightMargin=56.7, leftMargin=56.7,
+                                topMargin=56.7, bottomMargin=56.7)
         styles = getSampleStyleSheet()
+        styles.add(ParagraphStyle(name='Justify', alignment=4))
 
         elements = []
 
+        # Add cover page
+        logo_url = "https://dcxsea.com/asset/images/logo/LOGO_DCX.png"
+        response = requests.get(logo_url)
+        if response.status_code == 200:
+            logo_image = BytesIO(response.content)
+            img = Image(logo_image, 2*inch, 1*inch)
+            img.hAlign = 'CENTER'
+            elements.append(img)
+
+        elements.append(Spacer(1, 12))
+        elements.append(Paragraph("<b>DCx Co., Ltd.</b>", styles['Title']))
+        elements.append(Spacer(1, 24))
+        elements.append(Paragraph("<b>Report</b>", styles['Title']))
+        elements.append(Spacer(1, 12))
+        elements.append(Paragraph("Indigenous Agriculture Adaptation", styles['Title']))
+        elements.append(Spacer(1, 48))
+        elements.append(Paragraph("Prepared for: Jack Jasmin", styles['Normal']))
+        elements.append(Paragraph("Prepared by: Black Eye Team", styles['Normal']))
+        elements.append(Spacer(1, 12))
+        elements.append(Paragraph(f"Date: {datetime.now().strftime('%B %d, %Y')}", styles['Normal']))
+        elements.append(PageBreak())
+
+        # Process content into structured paragraphs
         lines = content.split("\n")
         for line in lines:
             if line.strip().startswith("# "):
@@ -926,7 +954,7 @@ def create_pdf_with_structure(pdf_filename, content):
             elif line.strip().startswith("* "):
                 elements.append(Paragraph(f"• {line.strip()[2:]}", styles['Normal']))
             else:
-                elements.append(Paragraph(line.strip(), styles['Normal']))
+                elements.append(Paragraph(line.strip(), styles['Justify']))
             elements.append(Spacer(1, 12))
 
         doc.build(elements)
@@ -1079,7 +1107,7 @@ def dashboard():
             """,
             unsafe_allow_html=True
         )
-        pivot_table_url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSnUF27sotZoKCfxKc-dWsLXlKaObixAwluYlygi2GxapQ0QwuFNZkP-3Je_y1YkY8tXgaxm7szHei1/pub?gid=254021688&single=true&output=csv'
+        pivot_table_url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSnUF27sotZoKCfxKc-dWsLXlKaObixAwluYlygi2GxapQ0QwuFNZk-3Je_y1YkY8tXgaxm7szHei1/pub?gid=254021688&single=true&output=csv'
         pivot_df = fetch_pivot_data(pivot_table_url)
         if pivot_df is not None:
             pivot = pivot_df.style.set_properties(**{'background-color': 'rgb(161, 219, 255, 0.3)', 'color': 'white'})
