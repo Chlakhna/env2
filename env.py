@@ -890,34 +890,33 @@ def read_docx_content(word_filename):
     return content
 
 # Function to create PDF using fpdf2
+
 # def create_pdf_from_text(pdf_filename, content):
 #     try:
 #         pdf = FPDF()
 #         pdf.add_page()
-#         pdf.set_font("Arial", size=12)
+#         pdf.set_font("Arial", size=12)  # Consider reducing this size if necessary
 
-#         # Handle long lines by splitting them if they exceed the page width
 #         max_line_width = pdf.w - 2 * pdf.l_margin  # Page width minus margins
 
 #         for line in content.split("\n"):
 #             if len(line.strip()) > 0:
-#                 # Split the line into words
 #                 words = line.split(' ')
 #                 current_line = ""
 #                 for word in words:
-#                     # Check if adding the next word would exceed the line width
+#                     # Log the word and its width to identify the issue
+#                     word_width = pdf.get_string_width(word)
+#                     st.write(f"Processing word: {word}, Width: {word_width}, Max Width: {max_line_width}")
+                    
+#                     if word_width > max_line_width:
+#                         # If even a single word is too wide, log it and truncate or split it
+#                         st.warning(f"Word '{word}' is too long to fit in the line.")
+#                         # Consider splitting or truncating the word
+#                         word = word[:int(max_line_width)] + '...'  # Example truncation, you may split it instead
+
 #                     if pdf.get_string_width(current_line + word + " ") > max_line_width:
-#                         if pdf.get_string_width(word) > max_line_width:
-#                             # Break long words if they can't fit within the line
-#                             for char in word:
-#                                 if pdf.get_string_width(current_line + char) > max_line_width:
-#                                     pdf.multi_cell(0, 10, current_line)
-#                                     current_line = char
-#                                 else:
-#                                     current_line += char
-#                         else:
-#                             pdf.multi_cell(0, 10, current_line)
-#                             current_line = word + " "
+#                         pdf.multi_cell(0, 10, current_line)
+#                         current_line = word + " "
 #                     else:
 #                         current_line += word + " "
 #                 if current_line:
@@ -926,13 +925,16 @@ def read_docx_content(word_filename):
 #                 pdf.multi_cell(0, 10, '')
 
 #         pdf.output(pdf_filename)
+
+#         if not os.path.exists(pdf_filename):
+#             raise FileNotFoundError(f"{pdf_filename} not created.")
 #     except Exception as e:
 #         raise RuntimeError(f"Failed to create PDF: {e}")
 def create_pdf_from_text(pdf_filename, content):
     try:
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Arial", size=12)  # Consider reducing this size if necessary
+        pdf.set_font("Arial", size=12)
 
         max_line_width = pdf.w - 2 * pdf.l_margin  # Page width minus margins
 
@@ -941,24 +943,24 @@ def create_pdf_from_text(pdf_filename, content):
                 words = line.split(' ')
                 current_line = ""
                 for word in words:
-                    # Log the word and its width to identify the issue
                     word_width = pdf.get_string_width(word)
-                    st.write(f"Processing word: {word}, Width: {word_width}, Max Width: {max_line_width}")
+                    st.write(f"Processing word: '{word}', Width: {word_width}, Max Width: {max_line_width}")
                     
                     if word_width > max_line_width:
-                        # If even a single word is too wide, log it and truncate or split it
-                        st.warning(f"Word '{word}' is too long to fit in the line.")
-                        # Consider splitting or truncating the word
-                        word = word[:int(max_line_width)] + '...'  # Example truncation, you may split it instead
-
+                        st.warning(f"Word '{word}' is too long to fit in the line. Truncating...")
+                        word = word[:int(max_line_width)] + '...'  # Example truncation
+                        
                     if pdf.get_string_width(current_line + word + " ") > max_line_width:
+                        st.write(f"Line before adding word: '{current_line}', Line width: {pdf.get_string_width(current_line)}")
                         pdf.multi_cell(0, 10, current_line)
                         current_line = word + " "
                     else:
                         current_line += word + " "
+
                 if current_line:
                     pdf.multi_cell(0, 10, current_line)
             else:
+                st.write("Processing empty line")
                 pdf.multi_cell(0, 10, '')
 
         pdf.output(pdf_filename)
@@ -966,6 +968,7 @@ def create_pdf_from_text(pdf_filename, content):
         if not os.path.exists(pdf_filename):
             raise FileNotFoundError(f"{pdf_filename} not created.")
     except Exception as e:
+        st.error(f"Failed to create PDF: {e}")
         raise RuntimeError(f"Failed to create PDF: {e}")
 
 
