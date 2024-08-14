@@ -296,32 +296,10 @@ def save_report_as_word(report, filename):
 #                     st.error("Failed to convert Word to PDF after multiple attempts.")
 #     finally:
 #         pythoncom.CoUninitialize()
-# def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
-#     for attempt in range(retries):
-#         try:
-#             convert(word_filename, pdf_filename)
-#             st.success("Conversion successful!")
-#             return
-#         except Exception as e:
-#             st.error(f"Attempt {attempt + 1} failed: {e}")
-#             if attempt < retries - 1:
-#                 time.sleep(delay)
-#             else:
-#                 st.error("Failed to convert Word to PDF after multiple attempts.")
-
-
-
 def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
     for attempt in range(retries):
         try:
-            # Use convertapi to convert the Word document to PDF
-            result = convertapi.convert('pdf', {
-                'File': word_filename
-            }, from_format='docx')
-
-            # Save the PDF to the desired location
-            result.file.save(pdf_filename)
-
+            convert(word_filename, pdf_filename)
             st.success("Conversion successful!")
             return
         except Exception as e:
@@ -331,16 +309,6 @@ def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
             else:
                 st.error("Failed to convert Word to PDF after multiple attempts.")
 
-
-
-# def create_zip_file(word_filename, pdf_filename, zip_filename):
-#     try:
-#         with zipfile.ZipFile(zip_filename, 'w') as zipf:
-#             zipf.write(word_filename)
-#             zipf.write(pdf_filename)
-#         st.success(f"Zip file {zip_filename} created successfully.")
-#     except Exception as e:
-#         st.error(f"Failed to create zip file: {e}")
 def create_zip_file(word_filename, pdf_filename, zip_filename):
     try:
         with zipfile.ZipFile(zip_filename, 'w') as zipf:
@@ -349,6 +317,7 @@ def create_zip_file(word_filename, pdf_filename, zip_filename):
         st.success(f"Zip file {zip_filename} created successfully.")
     except Exception as e:
         st.error(f"Failed to create zip file: {e}")
+
 
 def send_email_with_attachments(subject, body, attachments):
     to_email = ["hratana261@gmail.com", "khengdalish21@gmail.com", "chlakhna702@gmail.com"]
