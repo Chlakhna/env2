@@ -930,13 +930,22 @@ def read_docx_content(word_filename):
 #             raise FileNotFoundError(f"{pdf_filename} not created.")
 #     except Exception as e:
 #         raise RuntimeError(f"Failed to create PDF: {e}")
+def clean_content(content):
+    # Remove or replace problematic characters
+    cleaned_content = []
+    for line in content.split('\n'):
+        cleaned_line = ''.join(ch for ch in line if ch.isprintable())
+        cleaned_content.append(cleaned_line)
+    return '\n'.join(cleaned_content)
 def create_pdf_from_text(pdf_filename, content):
     try:
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Arial", size=12)
+        pdf.set_font("Arial", size=10)  # Reduced font size
 
         max_line_width = pdf.w - 2 * pdf.l_margin  # Page width minus margins
+
+        content = clean_content(content)  # Clean the content to remove hidden characters
 
         for line in content.split("\n"):
             if len(line.strip()) > 0:
@@ -970,6 +979,28 @@ def create_pdf_from_text(pdf_filename, content):
     except Exception as e:
         st.error(f"Failed to create PDF: {e}")
         raise RuntimeError(f"Failed to create PDF: {e}")
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+
+def create_pdf_reportlab(pdf_filename, content):
+    try:
+        c = canvas.Canvas(pdf_filename, pagesize=letter)
+        width, height = letter
+        c.setFont("Helvetica", 10)
+
+        y = height - 40
+        for line in content.split('\n'):
+            c.drawString(40, y, line)
+            y -= 12  # Move to the next line, adjust line spacing as needed
+
+        c.save()
+
+        if not os.path.exists(pdf_filename):
+            raise FileNotFoundError(f"{pdf_filename} not created.")
+    except Exception as e:
+        st.error(f"Failed to create PDF: {e}")
+        raise RuntimeError(f"Failed to create PDF: {e}")
+
 
 
 def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
