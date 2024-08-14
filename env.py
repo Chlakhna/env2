@@ -632,6 +632,7 @@
 
 import streamlit as st
 import pandas as pd
+import json
 import os
 import zipfile
 from docx import Document
@@ -650,10 +651,14 @@ import requests
 from io import BytesIO
 from dotenv import load_dotenv
 import time
-from fpdf import FPDF
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-import json  # Add this line to import the json module
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+from reportlab.lib.enums import TA_CENTER
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -885,34 +890,11 @@ def read_docx_content(word_filename):
         content += para.text + "\n"
     return content
 
-def create_pdf_reportlab(pdf_filename, content):
-    try:
-        c = canvas.Canvas(pdf_filename, pagesize=letter)
-        width, height = letter
-        c.setFont("Helvetica", 10)
-
-        y = height - 40
-        for line in content.split('\n'):
-            if y < 40:  # If we're at the bottom of the page, add a new page
-                c.showPage()
-                y = height - 40
-                c.setFont("Helvetica", 10)
-            c.drawString(40, y, line)
-            y -= 12  # Move to the next line, adjust line spacing as needed
-
-        c.save()
-
-        if not os.path.exists(pdf_filename):
-            raise FileNotFoundError(f"{pdf_filename} not created.")
-    except Exception as e:
-        st.error(f"Failed to create PDF: {e}")
-        raise RuntimeError(f"Failed to create PDF: {e}")
-
 def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
     for attempt in range(retries):
         try:
             content = read_docx_content(word_filename)
-            create_pdf_reportlab(pdf_filename, content)
+            create_pdf_with_structure(pdf_filename, content)
             if os.path.exists(pdf_filename):
                 st.success("Conversion successful!")
                 return True
@@ -925,6 +907,35 @@ def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
             else:
                 st.error("Failed to convert Word to PDF after multiple attempts.")
                 return False
+
+def create_pdf_with_structure(pdf_filename, content):
+    try:
+        doc = SimpleDocTemplate(pdf_filename, pagesize=letter)
+        styles = getSampleStyleSheet()
+
+        elements = []
+
+        lines = content.split("\n")
+        for line in lines:
+            if line.strip().startswith("# "):
+                elements.append(Paragraph(line.strip()[2:], styles['Heading1']))
+            elif line.strip().startswith("## "):
+                elements.append(Paragraph(line.strip()[3:], styles['Heading2']))
+            elif line.strip().startswith("### "):
+                elements.append(Paragraph(line.strip()[4:], styles['Heading3']))
+            elif line.strip().startswith("* "):
+                elements.append(Paragraph(f"• {line.strip()[2:]}", styles['Normal']))
+            else:
+                elements.append(Paragraph(line.strip(), styles['Normal']))
+            elements.append(Spacer(1, 12))
+
+        doc.build(elements)
+
+        if not os.path.exists(pdf_filename):
+            raise FileNotFoundError(f"{pdf_filename} not created.")
+    except Exception as e:
+        st.error(f"Failed to create PDF: {e}")
+        raise RuntimeError(f"Failed to create PDF: {e}")
 
 def create_zip_file(word_filename, pdf_filename, zip_filename):
     try:
