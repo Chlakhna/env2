@@ -666,6 +666,9 @@ from_email = "seaklav168@gmail.com"
 password = os.getenv('EMAIL_PASSWORD')
 
 def send_to_telegram(file_path, caption):
+    if not os.path.exists(file_path):
+        st.error(f"File {file_path} not found. Cannot send to Telegram.")
+        return
     url = f"https://api.telegram.org/bot{telegram_bot_token}/sendDocument"
     with open(file_path, 'rb') as file:
         response = requests.post(url, data={'chat_id': telegram_chat_id, 'caption': caption}, files={'document': file})
@@ -675,12 +678,11 @@ def generate_report_with_chatgpt(data, report_title):
     try:
         prompt = (
             f"Please give a formal report based on provided data and contents as below:  "
-            # Your report structure and data here
             f"{json.dumps(data, indent=2)}"
         )
 
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
+            model="gpt-4",
             messages=[{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": prompt}],
             max_tokens=8000,
             temperature=0.7
@@ -891,9 +893,26 @@ def create_pdf_from_text(pdf_filename, content):
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=12)
+
+        # Handle long lines by splitting them if they exceed the page width
+        max_line_width = pdf.w - 2 * pdf.l_margin  # Page width minus margins
+
         for line in content.split("\n"):
             if len(line.strip()) > 0:
-                pdf.multi_cell(0, 10, line)
+                # Split the line into words
+                words = line.split(' ')
+                current_line = ""
+                for word in words:
+                    if pdf.get_string_width(current_line + word + " ") > max_line_width:
+                        pdf.multi_cell(0, 10, current_line)
+                        current_line = word + " "
+                    else:
+                        current_line += word + " "
+                if current_line:
+                    pdf.multi_cell(0, 10, current_line)
+            else:
+                pdf.multi_cell(0, 10, '')
+
         pdf.output(pdf_filename)
     except Exception as e:
         raise RuntimeError(f"Failed to create PDF: {e}")
