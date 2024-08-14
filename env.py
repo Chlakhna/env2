@@ -915,7 +915,10 @@ def create_pdf_with_structure(pdf_filename, content):
                                 rightMargin=56.7, leftMargin=56.7,
                                 topMargin=56.7, bottomMargin=56.7)
         styles = getSampleStyleSheet()
-        styles.add(ParagraphStyle(name='Justify', alignment=4))
+        styles.add(ParagraphStyle(name='Justify', alignment=4, fontName="Helvetica"))
+        styles.add(ParagraphStyle(name='Heading1', alignment=1, fontSize=18, spaceAfter=20, leading=22))
+        styles.add(ParagraphStyle(name='Heading2', alignment=1, fontSize=16, spaceAfter=18, leading=20))
+        styles.add(ParagraphStyle(name='Normal', fontName="Helvetica", fontSize=12, spaceAfter=12, leading=14))
 
         elements = []
 
@@ -929,11 +932,11 @@ def create_pdf_with_structure(pdf_filename, content):
             elements.append(img)
 
         elements.append(Spacer(1, 12))
-        elements.append(Paragraph("<b>DCx Co., Ltd.</b>", styles['Title']))
+        elements.append(Paragraph("<b>DCx Co., Ltd.</b>", styles['Heading1']))
         elements.append(Spacer(1, 24))
-        elements.append(Paragraph("<b>Report</b>", styles['Title']))
+        elements.append(Paragraph("<b>Report</b>", styles['Heading2']))
         elements.append(Spacer(1, 12))
-        elements.append(Paragraph("Indigenous Agriculture Adaptation", styles['Title']))
+        elements.append(Paragraph("Indigenous Agriculture Adaptation", styles['Heading1']))
         elements.append(Spacer(1, 48))
         elements.append(Paragraph("Prepared for: Jack Jasmin", styles['Normal']))
         elements.append(Paragraph("Prepared by: Black Eye Team", styles['Normal']))
@@ -963,6 +966,7 @@ def create_pdf_with_structure(pdf_filename, content):
     except Exception as e:
         st.error(f"Failed to create PDF: {e}")
         raise RuntimeError(f"Failed to create PDF: {e}")
+
 
 def create_zip_file(word_filename, pdf_filename, zip_filename):
     try:
