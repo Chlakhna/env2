@@ -628,6 +628,8 @@
 
 
 
+
+
 import streamlit as st
 import pandas as pd
 import json
@@ -682,7 +684,7 @@ def generate_report_with_chatgpt(data, report_title):
         )
 
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
+            model="gpt-4",
             messages=[{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": prompt}],
             max_tokens=8000,
             temperature=0.7
