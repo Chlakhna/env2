@@ -941,18 +941,13 @@ def create_pdf_from_text(pdf_filename, content):
                 words = line.split(' ')
                 current_line = ""
                 for word in words:
+                    # Debugging: Log the word that's causing the issue
+                    if pdf.get_string_width(word) > max_line_width:
+                        st.warning(f"Long word detected: {word}")
+                        word = word[:max_line_width] + '...'  # Truncate long words
                     if pdf.get_string_width(current_line + word + " ") > max_line_width:
-                        if pdf.get_string_width(word) > max_line_width:
-                            # Break long words that can't fit within the line
-                            for char in word:
-                                if pdf.get_string_width(current_line + char) > max_line_width:
-                                    pdf.multi_cell(0, 10, current_line)
-                                    current_line = char
-                                else:
-                                    current_line += char
-                        else:
-                            pdf.multi_cell(0, 10, current_line)
-                            current_line = word + " "
+                        pdf.multi_cell(0, 10, current_line)
+                        current_line = word + " "
                     else:
                         current_line += word + " "
                 if current_line:
@@ -961,14 +956,12 @@ def create_pdf_from_text(pdf_filename, content):
                 pdf.multi_cell(0, 10, '')
 
         pdf.output(pdf_filename)
+
         if not os.path.exists(pdf_filename):
             raise FileNotFoundError(f"{pdf_filename} not created.")
     except Exception as e:
         raise RuntimeError(f"Failed to create PDF: {e}")
 
-               
-
-# Function to convert DOCX to PDF with retry logic
 def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
     for attempt in range(retries):
         try:
@@ -986,6 +979,28 @@ def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
             else:
                 st.error("Failed to convert Word to PDF after multiple attempts.")
                 return False
+
+
+               
+
+# # Function to convert DOCX to PDF with retry logic
+# def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
+#     for attempt in range(retries):
+#         try:
+#             content = read_docx_content(word_filename)
+#             create_pdf_from_text(pdf_filename, content)
+#             if os.path.exists(pdf_filename):
+#                 st.success("Conversion successful!")
+#                 return True
+#             else:
+#                 raise FileNotFoundError(f"Failed to create {pdf_filename}")
+#         except Exception as e:
+#             st.error(f"Attempt {attempt + 1} failed: {e}")
+#             if attempt < retries - 1:
+#                 time.sleep(delay)
+#             else:
+#                 st.error("Failed to convert Word to PDF after multiple attempts.")
+#                 return False
 
 # Function to create a ZIP file containing both the DOCX and PDF files
 def create_zip_file(word_filename, pdf_filename, zip_filename):
