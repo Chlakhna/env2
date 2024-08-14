@@ -66,4 +66,4 @@ watchdog==4.0.2
 yarl==1.9.4
 fpdf2==2.6.1
 reportlab==4.0.4
-json==0.1.0
+
