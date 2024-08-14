@@ -631,16 +631,12 @@
 
 
 import streamlit as st
-import pandas as pd
-import json
 import os
 import zipfile
 from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.section import WD_SECTION
-from docx.oxml.ns import qn
-from docx.oxml import OxmlElement
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -653,12 +649,10 @@ import requests
 from io import BytesIO
 from dotenv import load_dotenv
 import time
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
-from reportlab.lib.units import inch
 from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
 from reportlab.lib import colors
 
 # Load environment variables from .env file
@@ -885,31 +879,6 @@ def save_report_as_word(report, filename):
     except Exception as e:
         st.error(f"Failed to save Word report: {e}")
 
-def read_docx_content(word_filename):
-    doc = Document(word_filename)
-    content = ""
-    for para in doc.paragraphs:
-        content += para.text + "\n"
-    return content
-
-def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
-    for attempt in range(retries):
-        try:
-            content = read_docx_content(word_filename)
-            create_pdf_with_structure(pdf_filename, content)
-            if os.path.exists(pdf_filename):
-                st.success("Conversion successful!")
-                return True
-            else:
-                raise FileNotFoundError(f"Failed to create {pdf_filename}")
-        except Exception as e:
-            st.error(f"Attempt {attempt + 1} failed: {e}")
-            if attempt < retries - 1:
-                time.sleep(delay)
-            else:
-                st.error("Failed to convert Word to PDF after multiple attempts.")
-                return False
-
 def create_pdf_with_structure(pdf_filename, content):
     try:
         doc = SimpleDocTemplate(pdf_filename, pagesize=A4,
@@ -965,6 +934,31 @@ def create_pdf_with_structure(pdf_filename, content):
         st.error(f"Failed to create PDF: {e}")
         raise RuntimeError(f"Failed to create PDF: {e}")
 
+def convert_to_pdf_with_retry(word_filename, pdf_filename, retries=3, delay=5):
+    for attempt in range(retries):
+        try:
+            content = read_docx_content(word_filename)
+            create_pdf_with_structure(pdf_filename, content)
+            if os.path.exists(pdf_filename):
+                st.success("Conversion successful!")
+                return True
+            else:
+                raise FileNotFoundError(f"Failed to create {pdf_filename}")
+        except Exception as e:
+            st.error(f"Attempt {attempt + 1} failed: {e}")
+            if attempt < retries - 1:
+                time.sleep(delay)
+            else:
+                st.error("Failed to convert Word to PDF after multiple attempts.")
+                return False
+
+def read_docx_content(word_filename):
+    doc = Document(word_filename)
+    content = ""
+    for para in doc.paragraphs:
+        content += para.text + "\n"
+    return content
+
 def create_zip_file(word_filename, pdf_filename, zip_filename):
     try:
         with zipfile.ZipFile(zip_filename, 'w') as zipf:
@@ -1006,232 +1000,6 @@ def send_email_with_attachments(subject, body, attachments):
         st.success(f"Email sent to {', '.join(to_email)}")
     except Exception as e:
         st.error(f"Failed to send email: {e}")
-
-def fetch_data(google_sheet_url):
-    try:
-        df = pd.read_csv(google_sheet_url)
-    except Exception as e:
-        st.error(f"Failed to fetch data from Google Sheets: {e}")
-        return None
-    return df
-
-def fetch_pivot_data(pivot_table_url):
-    try:
-        pivot_df = pd.read_csv(pivot_table_url)
-    except Exception as e:
-        st.error(f"Failed to fetch pivot table data from Google Sheets: {e}")
-        return None
-    return pivot_df
-
-def ask_about_data(data, question):
-    try:
-        prompt = f"Given the following data:\n{data.to_csv(index=False)}\nAnswer the following question: {question}"
-
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[{"role": "system", "content": "You are a data analyst."}, {"role": "user", "content": prompt}],
-            max_tokens=500,
-            temperature=0.5
-        )
-
-        answer = response.choices[0].message['content'].strip()
-        return answer
-    except Exception as e:
-        st.error(f"Failed to get a response: {e}")
-        return None
-
-def dashboard():
-    st.set_page_config(
-        page_title="DCx Co.,ltd",
-        page_icon="https://dcxsea.com/asset/images/logo/LOGO_DCX.png",
-        layout="wide",
-        initial_sidebar_state="collapsed"
-    )
-
-    hide_st_style = """
-                <style>
-                #MainMenu {visibility: hidden;}
-                footer {visibility: hidden;}
-                </style>
-                """
-    st.markdown(hide_st_style, unsafe_allow_html=True)
-
-    st.markdown(
-        """
-        <div style="display: flex; align-items: center;">
-            <img src="https://cdn3d.iconscout.com/3d/free/thumb/free-line-chart-growth-3814121-3187502.png" alt="logo" style="width: 90px; margin-right: 15px;">
-            <h3 style="font-family: 'Khmer OS Muol Light', Arial, sans-serif; margin-top: 0;">ការបន្សាំកសិកម្មជនជាតិដើមភាគតិច</h3>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.sidebar.markdown(
-        """
-        <div style="display: flex; justify-content: center;margin-top: 0px; margin-bottom: 20px;">
-            <img src="https://dcxsea.com/asset/images/logo/LOGO_DCX.png" style="width: 150px;">
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    options = st.sidebar.selectbox(
-        'Choose Dataset',
-        [' ', '6 Months', 'One Year', '6 & 12 Months']
-    )
-
-    if options == 'One Year':
-        report_title = 'One Year Report'
-        df = fetch_data(
-            google_sheet_url='https://docs.google.com/spreadsheets/d/e/2PACX-1vSnUF27sotZoKCfxKc-dWsLXlKaObixAwluYlygi2GxapQ0QwuFNZkP-3Je_y1YkY8tXgaxm7szHei1/pub?gid=2140672542&single=true&output=csv'
-        )
-    elif options == '6 Months':
-        report_title = '6 Months Report'
-        df = fetch_data(
-            google_sheet_url='https://docs.google.com/spreadsheets/d/e/2PACX-1vSnUF27sotZoKCfxKc-dWsLXlKaObixAwluYlygi2GxapQ0QwuFNZkP-3Je_y1YkY8tXgaxm7szHei1/pub?gid=0&single=true&output=csv'
-        )
-    elif options == '6 & 12 Months':
-        report_title = '6 & 12 Months Report'
-        df = fetch_data(
-            google_sheet_url='https://docs.google.com/spreadsheets/d/e/2PACX-1vSnUF27sotZoKCfxKc-dWsLXlKaObixAwluYlygi2GxapQ0QwuFNZkP-3Je_y1YkY8tXgaxm7szHei1/pub?gid=1666040136&single=true&output=csv'
-        )
-    else:
-        report_title = None
-        df = None
-        st.markdown(
-            """
-            <div style="display: flex; align-items: center;">
-                <img src="https://symbolshub.org/wp-content/uploads/2019/10/bullet-point-symbol.png" alt="logo" style="width: 25px; margin-right: 5px; vertical-align: middle;">
-                <h3 style="font-family: 'Khmer OS Muol Light', Arial, sans-serif; margin-top: 0; font-size: 18px; font-weight: bold; vertical-align: middle;">ទិន្នន័យអំពីការបន្សាំកសិកម្មនៃជនជាតិភាគតិច</h3><br><br><br>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        pivot_table_url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSnUF27sotZoKCfxKc-dWsLXlKaObixAwluYlygi2GxapQ0QwuFNZk-3Je_y1YkY8tXgaxm7szHei1/pub?gid=254021688&single=true&output=csv'
-        pivot_df = fetch_pivot_data(pivot_table_url)
-        if pivot_df is not None:
-            pivot = pivot_df.style.set_properties(**{'background-color': 'rgb(161, 219, 255, 0.3)', 'color': 'white'})
-            st.dataframe(pivot)
-
-    if options in ['One Year', '6 Months', '6 & 12 Months'] and df is not None:
-        st.markdown(
-            """
-            <div style="display: flex; align-items: center;">
-                <img src="https://symbolshub.org/wp-content/uploads/2019/10/bullet-point-symbol.png" alt="logo" style="width: 25px; margin-right: 5px; vertical-align: middle;">
-                <h3 style="font-family: 'Khmer OS Muol Light', Arial, sans-serif; margin-top: 0; font-size: 18px; font-weight: bold; vertical-align: middle;">ទិន្នន័យអំពីការបន្សាំកសិកម្មនៃជនជាតិភាគតិច</h3><br><br><br>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        df_style = df.style.set_properties(**{'background-color': 'rgb(161, 219, 255, 0.3)', 'color': 'white'})
-        st.dataframe(df_style)
-
-        st.markdown(
-            """
-            <div style="display: flex; align-items: center;">
-                <label for="question_input" style="font-family: 'Khmer OS Muol Light', Arial, sans-serif; font-size: 14px;">សូមបញ្ចូលសំណួរ:</label>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            # Text input field
-            question = st.text_input(" ", key="question_input_key")
-
-        with col2:
-            st.markdown("""
-                <style>
-                div.stButton > button {
-                    width: auto;
-                    height: 40px;
-                    margin-top: 11px;
-                }
-                div.stButton > button:hover {
-                    background-color: darkgreen;
-                }
-                </style>
-                """, unsafe_allow_html=True)
-            search = st.button("Search")
-
-        # Display the answer if the button is clicked
-        if search and question:
-            st.session_state["search_result"] = ask_about_data(df, question)
-
-        if "search_result" in st.session_state:
-            st.write(st.session_state["search_result"])
-
-         # Add button to generate report with custom style
-        button_style = """
-            <style>
-            .stButton>button {
-                background-color: green;
-                margin-buttom: 24px;
-                color: white;
-                border: none;
-                padding: 0.5em 1em;
-                cursor: pointer;
-            }
-            .stButton>button:hover {
-                background-color: darkgreen;
-                color: #DFFF00;
-            }
-            </style>
-        """
-        st.markdown(button_style, unsafe_allow_html=True)
-
-        if st.button('Generate Report'):
-            if df.empty:
-                st.error("No data available to send.")
-            else:
-                df_cleaned = df.fillna('')  # Fill NaNs with empty strings
-                data = df_cleaned.to_dict(orient='records')  # Convert DataFrame to dictionary format
-
-                # Generate report with the ChatGPT API
-                if "report_parts" not in st.session_state:
-                    report_content, word_filename, pdf_filename = generate_report_with_chatgpt(data, report_title)
-                else:
-                    report_content = st.session_state["report_parts"]
-                    word_filename = f'{report_title}.docx'
-                    pdf_filename = f'{report_title}.pdf'
-                    save_report_as_word(report_content, word_filename)
-                    convert_to_pdf_with_retry(word_filename, pdf_filename)
-
-                if report_content:
-                    zip_filename = f'{report_title}.zip'
-                    create_zip_file(word_filename, pdf_filename, zip_filename)
-
-                    # Send email with the zip file
-                    send_email_with_attachments(f"{report_title} Generated Report", "Please find the attached reports.", [zip_filename])
-
-                    # Send report to Telegram
-                    send_to_telegram(word_filename, f"Here is your generated {report_title} (Word).")
-                    send_to_telegram(pdf_filename, f"Here is your generated {report_title} (PDF).")
-
-                    # Custom style for the download button
-                    st.markdown("""
-                    <style>
-                    div.stDownloadButton > button {
-                        background-color: #006400;
-                        color: white;
-                        padding: 10px;
-                        font-size: 16px;
-                        border-radius: 5px;
-                        border: none;
-                        cursor: pointer;
-                    }
-                    div.stDownloadButton > button:hover {
-                        background-color: #005000;
-                        color: #DFFF00;
-                    }
-                    </style>
-                    """, unsafe_allow_html=True)
-
-                    # Allow downloading of the zip file
-                    st.download_button(f'Download {report_title}', data=open(zip_filename, 'rb').read(), file_name=zip_filename, mime='application/zip')
-                else:
-                    st.write("Failed to generate report.")
 
 if __name__ == '__main__':
     dashboard()
